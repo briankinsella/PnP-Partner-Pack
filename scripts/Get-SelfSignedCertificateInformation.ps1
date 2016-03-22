@@ -6,8 +6,17 @@ $base64Cert = [System.Convert]::ToBase64String($rawCert)
 $rawCertHash = $cert.GetCertHash()
 $base64CertHash = [System.Convert]::ToBase64String($rawCertHash)
 $KeyId = [System.Guid]::NewGuid().ToString()
-Write-Host $base64Cert
-Write-Host $base64CertHash
-Write-Host $KeyId
 
-$cert
+$keyCredentials = 
+'"keyCredentials": [
+    {
+      "customKeyIdentifier": "'+ $base64CertHash + '",
+      "keyId": "' + $KeyId + '",
+      "type": "AsymmetricX509Cert",
+      "usage": "Verify",
+      "value":  "' + $base64Cert + '"
+     }
+  ],'
+$keyCredentials
+
+Write-Host "Certificate Thumbprint:" $cert.Thumbprint

@@ -1,5 +1,6 @@
 ﻿using Microsoft.SharePoint.Client;
 using OfficeDevPnP.Core.Framework.Provisioning.Model;
+using OfficeDevPnP.Core.Framework.Provisioning.ObjectHandlers;
 using OfficeDevPnP.Core.Framework.Provisioning.Providers.Xml;
 using System;
 using System.Collections.Generic;
@@ -27,7 +28,8 @@ namespace OfficeDevPnP.PartnerPack.Infrastructure
                 ApplyProvisioningTemplateToSite(context,
                     PnPPartnerPackSettings.InfrastructureSiteUrl,
                     "Overrides",
-                    "PnP-Partner-Pack-Overrides.xml");
+                    "PnP-Partner-Pack-Overrides.xml",
+                    handlers: Handlers.CustomActions);
 
                 // Turn ON the customization flag
                 context.Site.RootWeb.SetPropertyBagValue(
@@ -42,7 +44,8 @@ namespace OfficeDevPnP.PartnerPack.Infrastructure
                 ApplyProvisioningTemplateToSite(context,
                     PnPPartnerPackSettings.InfrastructureSiteUrl,
                     "Responsive",
-                    "SPO-Responsive.xml");
+                    "SPO-Responsive.xml",
+                    handlers: Handlers.CustomActions);
             }
         }
 
@@ -80,7 +83,7 @@ namespace OfficeDevPnP.PartnerPack.Infrastructure
             return (result);
         }
 
-        private static void ApplyProvisioningTemplateToSite(ClientContext context, String siteUrl, String folder, String fileName)
+        private static void ApplyProvisioningTemplateToSite(ClientContext context, String siteUrl, String folder, String fileName, Dictionary<String, String> parameters = null, Handlers handlers = Handlers.All)
         {
             // Configure the XML file system provider
             XMLTemplateProvider provider =
@@ -92,8 +95,24 @@ namespace OfficeDevPnP.PartnerPack.Infrastructure
             ProvisioningTemplate template = provider.GetTemplate(fileName);
             template.Connector = provider.Connector;
 
+            ProvisioningTemplateApplyingInformation ptai = 
+                new ProvisioningTemplateApplyingInformation();
+
+            // We exclude Term Groups because they are not supported in AppOnly
+            ptai.HandlersToProcess = handlers;
+            ptai.HandlersToProcess ^= Handlers.TermGroups;
+
+            // Handle any custom parameter
+            if (parameters != null)
+            {
+                foreach (var parameter in parameters)
+                {
+                    template.Parameters.Add(parameter.Key, parameter.Value);
+                }
+            }
+
             // Apply the template to the target site
-            context.Site.RootWeb.ApplyProvisioningTemplate(template);
+            context.Site.RootWeb.ApplyProvisioningTemplate(template, ptai);
         }
 
         public static ProvisioningTemplate GetProvisioningTemplate(ClientContext context, String siteUrl, String folder, String fileName)
